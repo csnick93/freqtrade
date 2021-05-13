@@ -1,3 +1,4 @@
+from binance.client import Client
 import numpy as np
 import os
 import pandas as pd
@@ -30,8 +31,7 @@ def get_profit_history(closed_buy_orders, closed_sell_orders):
     deal_pairs = compute_trade_pair_results(closed_buy_orders,
                                             closed_sell_orders)
     deal_pairs.sort_values('order_date_sell', ascending=True, inplace=True)
-    profit_value_history = np.cumsum(
-        deal_pairs['net_profit'].values)
+    profit_value_history = np.cumsum(deal_pairs['net_profit'].values)
     profit_timepoints = deal_pairs['order_date_sell'].values
 
     return profit_value_history, profit_timepoints
@@ -57,6 +57,41 @@ def compute_trade_pair_results(closed_buy_orders, closed_sell_orders):
     return deal_pairs[[
         'ft_pair_sell', 'perc_profit', 'net_profit', 'order_date_sell'
     ]]
+
+
+def get_binance_client():
+    api_key = os.environ.get('BINANCE_API_KEY', None)
+    secret_key = os.environ.get('BINANCE_SECRET_KEY', None)
+    if api_key is None or secret_key is None:
+        raise RuntimeError('No binance credentials available')
+    client = Client(api_key, secret_key)
+    return client
+
+
+def get_current_price(client, ticker: str) -> float:
+    price = float(client.get_symbol_ticker(symbol=ticker)['price'])
+    return price
+
+
+def get_current_crypto_portfolio(closed_buy_orders, closed_sell_orders):
+    client = get_binance_client()
+    deal_pairs = closed_sell_orders.merge(closed_buy_orders,
+                                          on='trade_id',
+                                          how='inner',
+                                          suffixes=('_sell', '_buy'))
+    crypto_positions = closed_buy_orders[~closed_buy_orders.id.
+                                         isin(deal_pairs['id_buy'])]
+    crypto_positions = crypto_positions[['symbol', 'order_date', 'price']]
+    crypto_positions['current_price'] = crypto_positions.symbol.apply(
+        lambda x: get_current_price(client, x.replace('/', '')))
+    crypto_positions['current_perc'] = 100 * (
+        crypto_positions['current_price'] -
+        crypto_positions['price']) / crypto_positions['price']
+    crypto_positions = crypto_positions[[
+        'symbol', 'current_perc', 'current_price', 'price', 'order_date'
+    ]]
+    crypto_positions.sort_values('order_date', ascending=True, inplace=True)
+    return crypto_positions
 
 
 columns = [
@@ -144,26 +179,29 @@ st.plotly_chart(g, config={'displayModeBar': False})
 
 cash_spent = closed_buy_orders.cost.sum()
 cash_earned = closed_sell_orders.cost.sum()
-available_crypto = get_current_crypto_value(closed_buy_orders,
-                                            closed_sell_orders)
+crypto_portfolio = get_current_crypto_portfolio(closed_buy_orders, closed_sell_orders)
+
 fees = orders.cost.sum() * FEE_PERCENTAGE
-profit_perc = (cash_earned + available_crypto - fees - cash_spent) / cash_spent
-net_spending = cash_spent - cash_earned
+net_spending = closed_buy_orders.cost.sum() - closed_sell_orders.cost.sum()
 
 trade_pair_profits = compute_trade_pair_results(closed_buy_orders,
                                                 closed_sell_orders)
 deal_percentages = trade_pair_profits.perc_profit
+perc_profit = np.round(np.mean(deal_percentages), 2)
+net_profit = trade_pair_profits.net_profit.sum()
 
 st.markdown("## Key Indicators")
 st.json({
-    "Percentage Profit": round(profit_perc * 100, 2),
-    "Average Deal Profit": np.mean(deal_percentages),
-    "Net cash spent": net_spending,
-    "Fees": fees
+    "Percentage Profit": f'{perc_profit} %',
+    "Net Profit": f'$ {round(net_profit, 2)}',
+    "Net Spending": f'$ {round(net_spending, 2)}',
+    "Fees": f'$ {np.round(fees, 2)}',
+    "Crypto Value": f'$ {crypto_portfolio.current_price.sum()}'
 })
 
 st.markdown('## Deal Outcomes')
-fig = go.Figure(data=[go.Histogram(x=deal_percentages, autobinx=False, nbinsx=20)])
+fig = go.Figure(
+    data=[go.Histogram(x=deal_percentages, autobinx=False, nbinsx=20)])
 fig.update_layout(title='Deal Percentage Distributions')
 st.plotly_chart(fig, config={'displayModeBar': False})
 
@@ -171,6 +209,9 @@ wins, losses = sum(deal_percentages > 0.2), sum(deal_percentages <= 0.2)
 fig = go.Figure([go.Bar(x=['losses', 'wins'], y=[losses, wins])])
 fig.update_layout(title='Deal Outcomes')
 st.plotly_chart(fig, config={'displayModeBar': False})
+
+st.markdown('## Crypto Portfolio')
+st.dataframe(crypto_portfolio)
 
 st.markdown('## Trade Pair Profits')
 st.dataframe(trade_pair_profits)
