@@ -81,14 +81,14 @@ def get_current_crypto_portfolio(closed_buy_orders, closed_sell_orders):
                                           suffixes=('_sell', '_buy'))
     crypto_positions = closed_buy_orders[~closed_buy_orders.id.
                                          isin(deal_pairs['id_buy'])]
-    crypto_positions = crypto_positions[['symbol', 'order_date', 'price']]
+    crypto_positions = crypto_positions[['symbol', 'order_date', 'price', 'amount']]
     crypto_positions['current_price'] = crypto_positions.symbol.apply(
         lambda x: get_current_price(client, x.replace('/', '')))
     crypto_positions['current_perc'] = 100 * (
         crypto_positions['current_price'] -
         crypto_positions['price']) / crypto_positions['price']
     crypto_positions = crypto_positions[[
-        'symbol', 'current_perc', 'current_price', 'price', 'order_date'
+        'symbol', 'current_perc', 'current_price', 'price', 'order_date', 'amount'
     ]]
     crypto_positions.sort_values('order_date', ascending=True, inplace=True)
     return crypto_positions
@@ -189,6 +189,7 @@ trade_pair_profits = compute_trade_pair_results(closed_buy_orders,
 deal_percentages = trade_pair_profits.perc_profit
 perc_profit = np.round(np.mean(deal_percentages), 2)
 net_profit = trade_pair_profits.net_profit.sum()
+crypto_value = (crypto_portfolio.current_price * crypto_portfolio.amount).sum()
 
 st.markdown("## Key Indicators")
 st.json({
@@ -196,7 +197,7 @@ st.json({
     "Net Profit": f'$ {round(net_profit, 2)}',
     "Net Spending": f'$ {round(net_spending, 2)}',
     "Fees": f'$ {np.round(fees, 2)}',
-    "Crypto Value": f'$ {crypto_portfolio.current_price.sum()}'
+    "Crypto Value": f'$ {crypto_value}'
 })
 
 st.markdown('## Deal Outcomes')

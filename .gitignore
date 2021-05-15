@@ -96,3 +96,4 @@ target/
 !*.gitkeep
 
 *.pem
+*config.json
