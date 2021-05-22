@@ -210,6 +210,10 @@ class CombinedBinHAndClucV6(IStrategy):
             ),
             'buy'
         ] = 1
+
+        if dataframe.buy.max() == 1:
+            import pdb
+            pdb.set_trace()
         return dataframe
 
     def populate_sell_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
