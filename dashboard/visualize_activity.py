@@ -84,9 +84,9 @@ def get_current_crypto_portfolio(closed_buy_orders, closed_sell_orders):
     crypto_positions = crypto_positions[['symbol', 'order_date', 'price', 'amount']]
     crypto_positions['current_price'] = crypto_positions.symbol.apply(
         lambda x: get_current_price(client, x.replace('/', '')))
-    crypto_positions['current_perc'] = (
+    crypto_positions['current_perc'] = round((
         crypto_positions['current_price'] -
-        crypto_positions['price']) / crypto_positions['price']
+        crypto_positions['price']) / crypto_positions['price'] * 100, 2)
     crypto_positions = crypto_positions[[
         'symbol', 'current_perc', 'current_price', 'price', 'order_date', 'amount'
     ]]
@@ -197,7 +197,7 @@ st.json({
     "Net Spending": f'$ {round(net_spending, 2)}',
     "Number of Trades": len(deal_percentages),
     "Fees": f'$ {np.round(fees, 2)}',
-    "Crypto Value": f'$ {(crypto_portfolio.current_price * crypto_portfolio.amount).sum()}'
+    "Crypto Value": f'$ {round((crypto_portfolio.current_price * crypto_portfolio.amount).sum(), 2)}'
 })
 
 st.markdown('## Deal Outcomes')
