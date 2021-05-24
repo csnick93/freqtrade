@@ -7,11 +7,11 @@ import os
 import pandas as pd
 import pytz
 import sqlite3
+import subprocess
 import telegram
 import time
 
-ICHI_DB_PATH = os.environ['ICHI_DB_PATH']
-CLUC_DB_PATH = os.environ['CLUC_DB_PATH']
+DB_PATH = os.environ['DB_PATH']
 CHAT_ID = os.environ['CHAT_ID']
 BOT_TOKEN = os.environ['BOT_TOKEN']
 
@@ -116,6 +116,20 @@ def check_for_alarms(db_path: str) -> str:
     return alarm
 
 
+def shutdown_bot():
+    os.chdir(os.path.expanduser('~/freqtrade/ft_userdata'))
+    cmd = "docker-compose down"
+    response = subprocess.check_output(cmd)
+    return response
+
+
+def restart_bot():
+    os.chdir(os.path.expanduser('~/freqtrade/ft_userdata'))
+    cmd = "docker-compose up -d"
+    response = subprocess.check_output(cmd)
+    return response
+
+
 # Telegram
 def send(msg, chat_id, token):
     """
@@ -129,12 +143,18 @@ def send(msg, chat_id, token):
 def echo(update, context):
     command = update.message.text
     if command == 'update':
-        update_metrics = key_metrics(ICHI_DB_PATH)
+        update_metrics = key_metrics(DB_PATH)
         context.bot.send_message(chat_id=update.effective_chat.id,
                                  text=f'IchiBot: {update_metrics}')
-        update_metrics = key_metrics(CLUC_DB_PATH)
+    elif command == 'shutdown':
+        response = shutdown_bot()
         context.bot.send_message(chat_id=update.effective_chat.id,
-                                 text=f'ClucBot: {update_metrics}')
+                                 text=response)
+    elif command == 'restart':
+        st_response = shutdown_bot()
+        restart_response = restart_bot()
+        msg = f'Shutdown: {st_response}\nRestart: {restart_response}'
+        context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
 
 
 if __name__ == '__main__':
@@ -146,10 +166,7 @@ if __name__ == '__main__':
     updater.start_polling()
 
     while (True):
-        alarms = check_for_alarms(ICHI_DB_PATH)
+        alarms = check_for_alarms(DB_PATH)
         if len(alarms) > 0:
-            send(alarms, CHAT_ID, BOT_TOKEN)
-        alarms = check_for_alarms(CLUC_DB_PATH)
-        if alarms is not None:
             send(alarms, CHAT_ID, BOT_TOKEN)
         time.sleep(60 * 60)
