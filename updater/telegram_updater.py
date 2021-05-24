@@ -119,15 +119,17 @@ def check_for_alarms(db_path: str) -> str:
 def shutdown_bot():
     os.chdir(os.path.expanduser('~/freqtrade/ft_userdata'))
     cmd = "docker-compose down"
-    response = subprocess.check_output(cmd)
-    return response
+    response = os.system(cmd)
+    status = 'Success' if response==0 else 'Failed'
+    return status
 
 
 def restart_bot():
     os.chdir(os.path.expanduser('~/freqtrade/ft_userdata'))
     cmd = "docker-compose up -d"
-    response = subprocess.check_output(cmd)
-    return response
+    response = os.system(cmd)
+    status = 'Success' if response==0 else 'Failed'
+    return status
 
 
 # Telegram
@@ -145,7 +147,7 @@ def echo(update, context):
     if command == 'update':
         update_metrics = key_metrics(DB_PATH)
         context.bot.send_message(chat_id=update.effective_chat.id,
-                                 text=f'IchiBot: {update_metrics}')
+                                 text=update_metrics)
     elif command == 'shutdown':
         response = shutdown_bot()
         context.bot.send_message(chat_id=update.effective_chat.id,
@@ -155,6 +157,8 @@ def echo(update, context):
         restart_response = restart_bot()
         msg = f'Shutdown: {st_response}\nRestart: {restart_response}'
         context.bot.send_message(chat_id=update.effective_chat.id, text=msg)
+    elif command == 'chat_id':
+        context.bot.send_message(chat_id=update.effective_chat.id, text='Chat ID: {update.effective_chat.id}')
 
 
 if __name__ == '__main__':
