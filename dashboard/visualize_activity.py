@@ -192,8 +192,9 @@ net_profit = trade_pair_profits.net_profit.sum()
 
 st.markdown("## Key Indicators")
 st.json({
+    "Net Profit": f'$ {round(net_profit - fees, 2)}',
+    "Profit": f'$ {round(net_profit, 2)}',
     "Average Deal Percentage Profit": f'{perc_profit} %',
-    "Net Profit": f'$ {round(net_profit, 2)}',
     "Net Spending": f'$ {round(net_spending, 2)}',
     "Number of Trades": len(deal_percentages),
     "Fees": f'$ {np.round(fees, 2)}',

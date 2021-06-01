@@ -52,9 +52,9 @@ class Obelisk_Ichimoku_ZEMA_v1(IStrategy):
     process_only_new_candles = True
 
     # ROI table:
-    minimal_roi = {"0": 0.078, "40": 0.062, "99": 0.039, "218": 0}
+    minimal_roi = {"0": 0.02, "60": 0.01, "120": 0.005, "300": 0.003, "1440": 0.002, "2160": -0.05, "2880": -0.1}
 
-    stoploss = -0.294
+    stoploss = -0.2
 
     # Buy hyperspace params:
     buy_params = {'low_offset': 0.964, 'zema_len_buy': 51}
@@ -256,18 +256,19 @@ class Obelisk_Ichimoku_ZEMA_v1(IStrategy):
 
     def populate_sell_trend(self, dataframe: DataFrame,
                             metadata: dict) -> DataFrame:
-        zema = f'zema_{self.zema_len_sell.value}'
+        #zema = f'zema_{self.zema_len_sell.value}'
 
-        dataframe.loc[((dataframe['close'] >
-                        (dataframe[zema] * self.high_offset.value))),
-                      'sell'] = 1
+        #dataframe.loc[((dataframe['close'] >
+        #                (dataframe[zema] * self.high_offset.value))),
+        #              'sell'] = 1
+        dataframe.loc[:, 'sell'] = 0
 
         return dataframe
 
     def confirm_trade_exit(self, pair: str, trade, order_type: str,
                            amount: float, rate: float, time_in_force: str,
                            sell_reason: str, **kwargs) -> bool:
-
+        '''
         if sell_reason in ('roi', ):
             dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
             if dataframe.shape[0] > 0:
@@ -277,5 +278,5 @@ class Obelisk_Ichimoku_ZEMA_v1(IStrategy):
                     # don't sell during ichimoku uptrend
                     if current_candle['trending'] > 0:
                         return False
-
+        '''
         return True
