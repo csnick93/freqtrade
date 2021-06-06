@@ -16,23 +16,12 @@ def get_dataloaders(batch_size: int, cnn: bool):
     val_files = data_files[num_train:num_train + num_val]
     test_files = data_files[num_train + num_val:]
 
-    if cnn:
-        X_train = np.expand_dims(np.concatenate(
-            [np.load(TARGET_DIR / f)['X'] for f in train_files]),
-                                 axis=1)
-        X_val = np.expand_dims(np.concatenate(
-            [np.load(TARGET_DIR / f)['X'] for f in val_files]),
-                               axis=1)
-        X_test = np.expand_dims(np.concatenate(
-            [np.load(TARGET_DIR / f)['X'] for f in test_files]),
-                                axis=1)
-    else:
-        X_train = np.concatenate(
-            [np.load(TARGET_DIR / f)['X'] for f in train_files])
-        X_val = np.concatenate(
-            [np.load(TARGET_DIR / f)['X'] for f in val_files])
-        X_test = np.concatenate(
-            [np.load(TARGET_DIR / f)['X'] for f in test_files])
+    X_train = np.concatenate(
+        [np.load(TARGET_DIR / f)['X'].transpose(0, 2, 1) for f in train_files])
+    X_val = np.concatenate(
+        [np.load(TARGET_DIR / f)['X'].transpose(0, 2, 1) for f in val_files])
+    X_test = np.concatenate(
+        [np.load(TARGET_DIR / f)['X'].transpose(0, 2, 1) for f in test_files])
 
     y_train = np.concatenate(
         [np.load(TARGET_DIR / f)['y'] for f in train_files])
@@ -53,6 +42,7 @@ def get_dataloaders(batch_size: int, cnn: bool):
         'train':
         torch.utils.data.DataLoader(dataset_train,
                                     batch_size=batch_size,
+                                    shuffle=True,
                                     num_workers=4),
         'val':
         torch.utils.data.DataLoader(dataset_val,

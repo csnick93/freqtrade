@@ -273,7 +273,19 @@ ticker_df = read_ticker_data(ticker_file)
 samples, labels = create_samples(ticker_df)
 ```
 
+```{python}
+samples.transpose(0,2,1).shape
+```
+
+```{python}
+# samples.transpose??
+```
+
 ## Create data files
+
+```{python}
+import torch
+```
 
 ```{python}
 for ticker_file in tqdm(os.listdir(root_dir)):

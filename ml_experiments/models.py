@@ -20,16 +20,16 @@ class MLP(torch.nn.Module):
 class CNN(torch.nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
-        self.layer_1 = torch.nn.Conv1d(in_channels=1,
+        self.layer_1 = torch.nn.Conv1d(in_channels=38,
+                                       out_channels=64,
+                                       kernel_size=11)
+        self.layer_2 = torch.nn.Conv1d(in_channels=64,
+                                       out_channels=64,
+                                       kernel_size=11)
+        self.layer_3 = torch.nn.Conv1d(in_channels=64,
                                        out_channels=3,
                                        kernel_size=11)
-        self.layer_2 = torch.nn.Conv1d(in_channels=3,
-                                       out_channels=5,
-                                       kernel_size=11)
-        self.layer_3 = torch.nn.Conv1d(in_channels=5,
-                                       out_channels=3,
-                                       kernel_size=11)
-        self.layer_4 = torch.nn.Linear(126, 2)
+        # self.layer_4 = torch.nn.Linear(126, 2)
 
     def forward(self, x):
         x_1 = self.layer_1(x)
@@ -39,5 +39,5 @@ class CNN(torch.nn.Module):
         x_3 = self.layer_3(x_2_a)
         x_3_a = torch.nn.LeakyReLU()(x_3)
         x_4 = torch.flatten(x_3_a, start_dim=1)
-        x_4_a = self.layer_4(x_4)
+        x_4_a = torch.nn.Linear(x_4.shape[1], 2)(x_4)
         return x_4_a
