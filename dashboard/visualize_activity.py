@@ -218,12 +218,6 @@ st.dataframe(crypto_portfolio)
 st.markdown('## Trade Pair Profits')
 st.dataframe(trade_pair_profits)
 
-st.markdown("## Open Orders")
-open_orders.sort_values('order_date', ascending=False, inplace=True)
-st.dataframe(open_orders[[
-    'ft_pair', 'ft_order_side', 'price', 'amount', 'cost', 'order_date'
-]])
-
 st.markdown("## Closed Orders")
 closed_orders.sort_values('order_date', ascending=False, inplace=True)
 st.dataframe(closed_orders[[

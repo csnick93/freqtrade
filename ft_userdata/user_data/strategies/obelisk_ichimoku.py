@@ -52,9 +52,9 @@ class Obelisk_Ichimoku_ZEMA_v1(IStrategy):
     process_only_new_candles = True
 
     # ROI table:
-    minimal_roi = {"0": 0.02, "60": 0.01, "120": 0.005, "300": 0.003, "1440": 0.002, "2160": -0.05, "2880": -0.1}
+    minimal_roi = {"0": 0.02, "60": 0.01, "120": 0.005, "300": 0.003, "1440": 0.002, "2160": -0.02, "2880": -0.05, "3600": -0.10, "4320": -0.15, "5040": -0.2}
 
-    stoploss = -0.2
+    stoploss = -0.5
 
     # Buy hyperspace params:
     buy_params = {'low_offset': 0.964, 'zema_len_buy': 51}
