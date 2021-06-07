@@ -52,7 +52,7 @@ class Obelisk_Ichimoku_ZEMA_v1(IStrategy):
     process_only_new_candles = True
 
     # ROI table:
-    minimal_roi = {"0": 0.02, "60": 0.01, "120": 0.005, "300": 0.003, "1440": 0.002, "2160": -0.02, "2880": -0.05, "3600": -0.10, "4320": -0.15, "5040": -0.2}
+    minimal_roi = {"0": 0.03, "30": 0.02, "120": 0.01, "300": 0.005, "1440": 0.002, "5040": -0.05, "10080": -0.2}
 
     stoploss = -0.5
 
@@ -242,6 +242,11 @@ class Obelisk_Ichimoku_ZEMA_v1(IStrategy):
 
         dataframe = self.fast_tf_indicators(dataframe, metadata)
 
+        dataframe['period_high'] = dataframe.high.rolling(12).max()
+        dataframe['period_low'] = dataframe.low.rolling(12).min()
+        dataframe['rapid_change'] = dataframe.period_high / dataframe.period_low
+        dataframe['no_pump'] = ((ticker_df.rapid_change[~np.isnan(ticker_df.rapid_change)]) < 1.5).all()
+
         return dataframe
 
     def populate_buy_trend(self, dataframe: DataFrame,
@@ -250,6 +255,7 @@ class Obelisk_Ichimoku_ZEMA_v1(IStrategy):
 
         dataframe.loc[(dataframe['ichimoku_valid'] > 0)
                       & (dataframe['bear_trending'] == 0)
+                      & (dataframe['no_pump'] == True)
                       & (dataframe['close'] <
                          (dataframe[zema] * self.low_offset.value)), 'buy'] = 1
         return dataframe
