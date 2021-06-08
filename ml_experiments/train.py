@@ -112,7 +112,7 @@ if __name__ == '__main__':
     model = models.CNN()
     batch_size = 128
     dataloaders, dataset_sizes = dataloader.get_dataloaders(batch_size, cnn=True)
-    lr = 1e-3
+    lr = 1e-4
     num_epochs = 10
     steps_per_epoch = int(dataset_sizes['train'] / batch_size)
     criterion = torch.nn.CrossEntropyLoss()

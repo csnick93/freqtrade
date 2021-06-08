@@ -20,7 +20,7 @@ class MLP(torch.nn.Module):
 class CNN(torch.nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
-        self.layer_1 = torch.nn.Conv1d(in_channels=38,
+        self.layer_1 = torch.nn.Conv1d(in_channels=12,
                                        out_channels=64,
                                        kernel_size=11)
         self.layer_2 = torch.nn.Conv1d(in_channels=64,

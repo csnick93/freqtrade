@@ -4,7 +4,7 @@ import pathlib
 import torch
 
 TARGET_DIR = pathlib.Path(
-    '/Users/nicolasvonroden/Data/freqtrade/prediction_data')
+    '/Users/nicolasvonroden/Data/freqtrade/toy_prediction_data')
 
 
 def get_dataloaders(batch_size: int, cnn: bool):
@@ -16,12 +16,18 @@ def get_dataloaders(batch_size: int, cnn: bool):
     val_files = data_files[num_train:num_train + num_val]
     test_files = data_files[num_train + num_val:]
 
-    X_train = np.concatenate(
-        [np.load(TARGET_DIR / f)['X'].transpose(0, 2, 1) for f in train_files])
-    X_val = np.concatenate(
-        [np.load(TARGET_DIR / f)['X'].transpose(0, 2, 1) for f in val_files])
-    X_test = np.concatenate(
-        [np.load(TARGET_DIR / f)['X'].transpose(0, 2, 1) for f in test_files])
+    X_train = np.concatenate([
+        np.load(TARGET_DIR / f)['X'][:, :, :12].transpose(0, 2, 1)
+        for f in train_files
+    ])
+    X_val = np.concatenate([
+        np.load(TARGET_DIR / f)['X'][:, :, :12].transpose(0, 2, 1)
+        for f in val_files
+    ])
+    X_test = np.concatenate([
+        np.load(TARGET_DIR / f)['X'][:, :, :12].transpose(0, 2, 1)
+        for f in test_files
+    ])
 
     y_train = np.concatenate(
         [np.load(TARGET_DIR / f)['y'] for f in train_files])

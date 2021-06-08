@@ -29,6 +29,11 @@ import talib.abstract as ta
 from technical import indicators as ftt
 ```
 
+```{python}
+pd.set_option('display.max_columns', None)
+pd.set_option('display.max_rows', None)
+```
+
 # Read in data routines
 
 ```{python}
@@ -198,7 +203,8 @@ def read_ticker_data(ticker_file):
     indicator_df = populate_indicators(content)
     
     indicator_df = indicator_df.dropna()
-    indicator_df = (indicator_df - indicator_df.min()) / (indicator_df.max() - indicator_df.min())
+    
+    indicator_df = (indicator_df - indicator_df.min()) / (indicator_df.max() - indicator_df.min() + 1e-5)
     
     return indicator_df
 ```
@@ -240,6 +246,7 @@ def compute_label(current_price, highest_future_price) -> int:
 def create_samples(ticker_df) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     samples = []
     labels = []
+    fps = []
     for i in range(int((ticker_df.shape[0] - 2*SAMPLE_LENGTH)/ SAMPLE_STEPSIZE)):
         sample = ticker_df.iloc[i * SAMPLE_STEPSIZE : 
                                     i * SAMPLE_STEPSIZE + SAMPLE_LENGTH]
@@ -254,12 +261,13 @@ def create_samples(ticker_df) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
                                'leading_senkou_span_b', 'cloud_green', 'cloud_red', 'cloud_top',
                                'cloud_bottom', 'future_green', 'future_red', 'chikou_high',
                                'chikou_low', 'atr', 'ssl_down', 'ssl_up', 'ssl_ok', 'ssl_bear',
-                               'ichimoku_ok', 'ichimoku_bear', 'ichimoku_valid', 'trend_pulse',
+                               'ichimoku_ok', 'ichimoku_bear', 'trend_pulse',
                                'bear_trend_pulse', 'trend_over', 'bear_trend_over', 'trending',
                                'bear_trending']].values)
         labels.append(label)
+        fps.append(future_prices.values)
         
-    return np.asarray(samples), np.asarray(labels)
+    return np.asarray(samples), np.asarray(labels), np.asarray(fps)
 ```
 
 ## Double check correctness
@@ -270,15 +278,26 @@ ticker_df = read_ticker_data(ticker_file)
 ```
 
 ```{python}
-samples, labels = create_samples(ticker_df)
+samples, labels, future_prices = create_samples(ticker_df)
 ```
 
 ```{python}
-samples.transpose(0,2,1).shape
+samples.shape
 ```
 
 ```{python}
-# samples.transpose??
+for i in tqdm(range(samples.shape[0])):
+    sample_price = samples[i, -1, 0]
+    future_max = np.max(future_prices[i])
+    label = labels[i]
+    
+    perc_change = (future_max - sample_price) / sample_price
+    
+    if label == 1 and perc_change < INCREASE_TARGET:
+        raise ValueError(f'Faulty label for sample {i}')
+    elif label == 0 and perc_change > INCREASE_TARGET:
+        raise ValueError(f'Faulty label for sample {i}')
+        
 ```
 
 ## Create data files
@@ -291,7 +310,7 @@ import torch
 for ticker_file in tqdm(os.listdir(root_dir)):
     try:
         ticker_df = read_ticker_data(root_dir / ticker_file)
-        samples, labels = create_samples(ticker_df)
+        samples, labels, _ = create_samples(ticker_df)
         ticker_name = (root_dir / ticker_file).stem
         np.savez(target_dir / f'{ticker_name}.npz', X=samples, y=labels)
     except Exception as e:
@@ -299,100 +318,32 @@ for ticker_file in tqdm(os.listdir(root_dir)):
         continue
 ```
 
-# Train a classifier on the data
-
-
-* For now, simply separate folds by coins
+# Compute Obelisk Strategy accuracy
 
 ```{python}
-from sklearn import neural_network
+def compute_obelisk_label(sample):
+    np.where((sample[:, 31] > 0) & (samples[:, 37]==0) & (samples[:,0] < samples[:, 6] * 1.004))
 ```
 
 ```{python}
-data_files = os.listdir(target_dir)
+ticker_df['buy'] = 0
+ticker_df.loc[(ticker_df['ichimoku_valid'] > 0)
+                      & (ticker_df['bear_trending'] == 0)
+                      & (ticker_df['close'] <
+                         (ticker_df['zema_51'] * 1.004)), 'buy'] = 1
 ```
 
 ```{python}
-num_train = int(len(data_files) * 0.7)
-num_val = int(len(data_files) * 0.1)
-num_test = int(len(data_files) * 0.2)
-
-train_files = data_files[:num_train]
-val_files = data_files[num_train : num_train+num_val]
-test_files = data_files[num_train+num_val:]
+sample=samples[0]
+result = np.where((sample[:, 31] > 0) & (sample[:, 36]==0) & (sample[:,0] < sample[:, 6] * 1.004))
 ```
 
 ```{python}
-X_train = np.concatenate([np.load(target_dir / f)['X'] for f in train_files + val_files])
-#X_val = np.concatenate([np.load(target_dir / f)['X'] for f in val_files])
-X_test = np.concatenate([np.load(target_dir / f)['X'] for f in test_files])
-
-y_train = np.concatenate([np.load(target_dir / f)['y'] for f in train_files + val_files])
-#y_val = np.concatenate([np.load(target_dir / f)['y'] for f in val_files])
-y_test = np.concatenate([np.load(target_dir / f)['y'] for f in test_files])
-```
-
-## Plot data
-
-```{python}
-X_train_pos = X_train[y_train==1]
+result
 ```
 
 ```{python}
-X_train_pos.shape
-```
-
-```{python}
-train_mean = X_train_pos.mean(axis=0)
-train_std = X_train_pos.std(axis=0)
-```
-
-```{python}
-fig = go.Figure()
-c = 'blue'
-fig.add_trace(go.Scatter(x=np.arange(4), y=train_mean+train_std,
-                                     mode='lines',
-                                     line=dict(color=c,width =0.1),
-                                     name='upper bound'))
-fig.add_trace(go.Scatter(x=np.arange(4), y=train_mean,
-                         mode='lines',
-                         line=dict(color=c),
-                         fill='tonexty',
-                         name='mean'))
-fig.add_trace(go.Scatter(x=np.arange(4), y=train_mean-train_std,
-                         mode='lines',
-                         line=dict(color=c, width =0.1),
-                         fill='tonexty',
-                         name='lower bound'))
-fig.show()
-```
-
-## Train model
-
-```{python}
-mlp = sklearn.neural_network.MLPClassifier(hidden_layer_sizes=(256, 128, 64), activation='logistic', solver='adam',
-         learning_rate_init = 1e-4, early_stopping=True, validation_fraction = 0.2, n_iter_no_change=20,
-         random_state=42)
-```
-
-```{python}
-clf = mlp.fit(X_train, y_train)
-```
-
-```{python}
-clf.score(X_train, y_train)
-```
-
-```{python}
-clf.score(X_test, y_test)
-```
-
-```{python}
-y_test[:10]
-```
-
-```{python}
-clf.predict(X_test[:10])
+ticker_df.head()
 ```
 
 ```{python}
